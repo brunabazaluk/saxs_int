@@ -5,9 +5,10 @@ import matplotlib.pyplot as plt
 import math 
 
 
-#getting variables
+#getting variables (these are set as examples, probably they'll be taken from files)
 initial_angle = 10
 final_angle = 350
+delta_q = 1
 
 #getting data from .tif
 img=str(input('filename: '))
@@ -18,8 +19,17 @@ data = np.array(data)
 #coord. invertidas ou n?
 data = pd.DataFrame(data)
 
+row=len(data.index)
+col = len(data.columns)
+
+polar_coor, qs = polar(data, row, col)
+
+Idataframe = select_I(qs, delta_q)
+
+Idataframe = uncertainty(Idataframe)
+
 #converting to polar coordinates
-	#here i'll have the list of all I's per slice (function of radius and angle)
+#here i'll have the list of all I's per slice (function of radius and angle)
 def polar(data, x_size, y_size):
 	#https://docs.scipy.org/doc/numpy/reference/generated/numpy.arctan.html
 	#about arctan numpy function
@@ -42,23 +52,57 @@ def polar(data, x_size, y_size):
 	return polar_data, radius_dict
 
 
-#creating uncertainty vector
+#building I vector with all I's per "slice" (delta_q)
+def select_I(qdict, delta_q):
 
+	qlist = sorted(qdict.items(), key = lambda x : x[0])
+	# qlist is now an ordered list of tuples (key, value)
+	l = len(qlist)
+	max_q = qlist[l - 1][0]
+
+	I_df = pd.DataFrame(columns=['start', 'end', 'I_s'])
+
+	for i in range(l):
+
+		if qlist[i][0] in range(q, q+delta_q):
+			Ilist.append(qlist[i][1])
+		else:
+			row = pd.DataFrame([[q, q+delta_q, Ilist]])
+			I_df.append(row, ignore_index=True)
+			q += delta_q
+
+	return I_df
+
+#creating uncertainty vector using numpy functions to calculate mean and std dev
 def uncertainty(I):
-	#I is the vector with all I's per "slice"
-	#I = [[i00, i01, i02], [i10, i11, i12]...]
+	#I is the dataframe with all I's per "slice" (delta_q)
+	#I = [[q0, q, [I0, I1, ...]], [q, q1, [I0, I1, ...]]...]
 
-	unc = []
+	I_avg = []
+	I_std = []
+	I_meanstd = []
 
 	l = len(I)
 
 	for i in range(l):
 
-		s = np.std(I[i])
-		se = s/(sqrt(len(I[i])))
-		I_avg = np.mean(I[i])
+		i0 = I[i][2]
+		stand_dev = np.std(i0, dtype=np.float64) #float64 to make it more accurate
+		I_meanstd.append(stand_dev/(sqrt(len(i0))))
+		I_avg.append(np.mean(i0))
+		I_std.append(stand_dev)
+	
 
-		unc.append([I_avg, s, se])
+	s1 = pd.Series(I_avg)
+	s2 = pd.Series(I_std)
+	s3 = pd.Series(I_meanstd)
 
-	return unc
+	I['Average I'] = s1.values
+	I['Is standart deviation'] = s2.values
+	I['Average I standart deviation'] = s3.values
+
+	return I
+
+def print_graph(df)
+	#print qxI graph showing std_dev
 
