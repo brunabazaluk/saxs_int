@@ -5,28 +5,31 @@ import matplotlib.pyplot as plt
 import math 
 
 
-#getting variables (these are set as examples, probably they'll be taken from files)
-initial_angle = 10
-final_angle = 350
-delta_q = 1
+def main():
+	#getting variables (these are set as examples, probably they'll be taken from files)
+	initial_angle = 10
+	final_angle = 350
+	delta_q = 1
 
-#getting data from .tif
-img=str(input('filename: '))
+	#getting data from .tif
+	img=str(input('filename: '))
 
-data = Image.open(img)
-data = np.array(data)
+	data = Image.open(img)
+	data = np.array(data)
 
-#coord. invertidas ou n?
-data = pd.DataFrame(data)
+	#coord. invertidas ou n?
+	data = pd.DataFrame(data)
 
-row=len(data.index)
-col = len(data.columns)
+	row=len(data.index)
+	col = len(data.columns)
 
-polar_coor, qs = polar(data, row, col)
+	polar_coor, qs = polar(data, row, col)
 
-Idataframe = select_I(qs, delta_q)
+	Idataframe = select_I(qs, delta_q)
 
-Idataframe = uncertainty(Idataframe)
+	Idataframe = uncertainty(Idataframe)
+
+	print_graph(Idataframe)
 
 #converting to polar coordinates
 #here i'll have the list of all I's per slice (function of radius and angle)
@@ -40,8 +43,8 @@ def polar(data, x_size, y_size):
 	theta=0
 	r=0
 
-	for x in range(x_size):
-		for y in range(y_size):
+	for x in range(1, x_size):
+		for y in range(1, y_size):
 			r = np.sqrt(np.power(x, 2) + np.power(y, 2))
 			theta = np.arctan(x/y)
 			I = data.iat[x,y]
@@ -57,19 +60,23 @@ def select_I(qdict, delta_q):
 
 	qlist = sorted(qdict.items(), key = lambda x : x[0])
 	# qlist is now an ordered list of tuples (key, value)
+	
 	l = len(qlist)
 	max_q = qlist[l - 1][0]
-
+	q = np.float64(qlist[0][0])
 	I_df = pd.DataFrame(columns=['start', 'end', 'I_s'])
+	Ilist = []
 
 	for i in range(l):
 
-		if qlist[i][0] in range(q, q+delta_q):
+		if (qlist[i][0] >= q) and (qlist[i][0] < q+delta_q): 
 			Ilist.append(qlist[i][1])
+
 		else:
 			row = pd.DataFrame([[q, q+delta_q, Ilist]])
 			I_df.append(row, ignore_index=True)
 			q += delta_q
+			Ilist = []
 
 	return I_df
 
@@ -103,6 +110,14 @@ def uncertainty(I):
 
 	return I
 
-def print_graph(df)
+def print_graph(df):
 	#print qxI graph showing std_dev
 
+	df.plot(x='Average I', y='q', xerr='Average I standart deviation')
+
+	plt.show()
+
+
+
+
+main()
