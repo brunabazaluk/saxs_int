@@ -38,7 +38,7 @@ def polar(data, x_size, y_size):
 	#about arctan numpy function
 
 	polar_data = pd.DataFrame(index=range(x_size),columns=range(y_size))
-	radius_dict = {}
+	radius_list = []
 
 	theta=0
 	r=0
@@ -49,32 +49,34 @@ def polar(data, x_size, y_size):
 			theta = np.arctan(x/y)
 			I = data.iat[x,y]
 			polar_data.iat[x, y] = [r, theta, I]
-			radius_dict.update({r : I})
+			radius_list.append((r, I))
+
 
 	#polar_data is a dataframe and each cell[i,j] is a list [r, theta, I], r and theta are i and j's funcions 
-	return polar_data, radius_dict
+	return polar_data, radius_list
 
 
 #building I vector with all I's per "slice" (delta_q)
 def select_I(qdict, delta_q):
 
-	qlist = sorted(qdict.items(), key = lambda x : x[0])
+	qlist = sorted(qdict, key = lambda x : x[0])
 	# qlist is now an ordered list of tuples (key, value)
-	
+
+	delta_q = np.float64(delta_q	)
 	l = len(qlist)
 	max_q = qlist[l - 1][0]
-	q = np.float64(qlist[0][0])
+	q = np.float64(qlist[0][0])	
 	I_df = pd.DataFrame(columns=['start', 'end', 'I_s'])
 	Ilist = []
 
-	for i in range(l):
+	for i in range(1, l):
 
-		if (qlist[i][0] >= q) and (qlist[i][0] < q+delta_q): 
+		if (np.float64(qlist[i][0]) >= np.float64(q)) and (np.float64(qlist[i][0]) < np.float64(q+delta_q)): 
 			Ilist.append(qlist[i][1])
 
 		else:
-			row = pd.DataFrame([[q, q+delta_q, Ilist]])
-			I_df.append(row, ignore_index=True)
+			row = pd.DataFrame([[q, q+delta_q, Ilist]], columns=['start', 'end', 'I_s'])
+			I_df = pd.concat([I_df, row], ignore_index=True)
 			q += delta_q
 			Ilist = []
 
@@ -93,27 +95,40 @@ def uncertainty(I):
 
 	for i in range(l):
 
-		i0 = I[i][2]
-		stand_dev = np.std(i0, dtype=np.float64) #float64 to make it more accurate
-		I_meanstd.append(stand_dev/(sqrt(len(i0))))
-		I_avg.append(np.mean(i0))
-		I_std.append(stand_dev)
+		i0 = np.array(I.iat[i, 2])
+		
+
+		if len(i0) > 1: 
+			stand_dev = np.std(i0)
+			I_meanstd.append(stand_dev/(np.sqrt(len(i0))))
+			I_avg.append(np.mean(i0))
+			I_std.append(stand_dev)
+		else:
+			I_meanstd.append(0)
+			I_avg.append(i0[0])
+			I_std.append(0)
+			
 	
 
 	s1 = pd.Series(I_avg)
 	s2 = pd.Series(I_std)
 	s3 = pd.Series(I_meanstd)
 
-	I['Average I'] = s1.values
-	I['Is standart deviation'] = s2.values
-	I['Average I standart deviation'] = s3.values
+	newI = pd.DataFrame()
+	newI['Average I'] = s1.values
+	newI['Is standart deviation'] = s2.values
+	newI['Average I standart deviation'] = s3.values
 
+	print(newI)
+	I = pd.concat([I, newI], axis=1)
+
+	print(I)
 	return I
 
 def print_graph(df):
 	#print qxI graph showing std_dev
 
-	df.plot(x='Average I', y='q', xerr='Average I standart deviation')
+	df.plot(x='Average I', y='start', xerr='Average I standart deviation')
 
 	plt.show()
 
