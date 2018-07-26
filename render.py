@@ -3,6 +3,7 @@ import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
 import math 
+import fabio
 
 
 def main():
@@ -13,9 +14,15 @@ def main():
 
 	#getting data from .tif
 	img=str(input('filename: '))
+	mask = str(input('mask file: '))
 
 	data = Image.open(img)
 	data = np.array(data)
+
+	mask = fabio.open(mask)
+	mask = np.array(mask.data)
+
+	data = subtract_mask(data, mask)
 
 	#coord. invertidas ou n?
 	data = pd.DataFrame(data)
@@ -132,6 +139,24 @@ def print_graph(df):
 
 	plt.show()
 
+
+def subtract_mask(data, mask):
+	'''
+		mask is an array made of 0s and 1s, 1 represents the presence of the mask, 
+		so, this function disconsider the cell in data represented by 1 on the mask
+	'''
+
+	shape = mask.shape
+
+	line = shape[0]
+	col = shape[1]
+
+	for l in range(line):
+		for c in range(col):
+			if mask[l][c] == 1:
+				data[l][c] = 0
+
+	return data
 
 
 
