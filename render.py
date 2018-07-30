@@ -52,16 +52,21 @@ def polar_q(data, x_size, y_size):
 	for x in range(1, x_size):
 		for y in range(1, y_size):
 			d = np.sqrt(np.power((x - geometry_pars.x0), 2) + np.power((y - geometry_pars.y0), 2)) #uses (x0,y0) as origin
-			theta = np.arctan((y - geometry_pars.y0)/(x - geometry_pars.x0)) #in rads
-			theta = (theta*180)/np.pi #converts to grades
-			I = data.iat[x,y]
-			r = d*(geometry_pars.px/1000) #converts from pixel to milimetro!!! nao micrometer
+			if d >= cake_pars.inrad and d <= cake_pars.outrad:	
 
-			alpha = (np.arctan(r/geometry_pars.dis))/2 #alpha is the angle used to get q
-			q = (4*np.pi*np.sin(alpha))/geometry_pars.wvl
+				theta = np.arctan((y - geometry_pars.y0)/(x - geometry_pars.x0)) #in rads
+				theta = (theta*180)/np.pi #converts to grades
+				
+				if theta >= cake_pars.s_az and theta <= cake_pars.e_az:
 
-			polar_data.iat[x, y] = [x, y, q, theta, I]
-			q_list.append((q, I, x, y))
+					I = data.iat[x,y]
+					r = d*(geometry_pars.px/1000) #converts from pixel to milimeter!!! 
+
+					alpha = (np.arctan(r/geometry_pars.dis))/2 #alpha is the angle used to get q
+					q = (4*np.pi*np.sin(alpha))/geometry_pars.wvl
+
+					polar_data.iat[x, y] = [x, y, q, theta, I]
+					q_list.append((q, I, x, y))
 
 
 
@@ -75,15 +80,15 @@ def select_I(mask, qdict, polar, delta_q):
 	qlist = sorted(qdict, key = lambda x : x[0])
 	# qlist is now an ordered list of tuples (key, value)
 
-	delta_q = np.float64(delta_q)
+	delta_q = np.float64(0.001)
 	l = len(qlist)
 	max_q = qlist[l - 1][0]
 	q = np.float64(qlist[0][0])	
 	I_df = pd.DataFrame(columns=['start', 'end', 'I_s'])
 	Ilist = []
-	print(max_q)
+	
 	for i in range(1, l):
-
+		
 		if (np.float64(qlist[i][0]) >= np.float64(q)) and (np.float64(qlist[i][0]) < np.float64(q+delta_q)): 
 			if mask[qlist[i][2]][qlist[i][3]] == 1:
 				Ilist.append(qlist[i][1])
@@ -117,11 +122,11 @@ def uncertainty(I):
 			I_meanstd.append(stand_dev/(np.sqrt(len(i0))))
 			I_avg.append(np.mean(i0))
 			I_std.append(stand_dev)
-		else:
+		elif i0 != []:
 			I_meanstd.append(0)
-			I_avg.append(i0[0])
+			I_avg.append(np.float64(i0))
 			I_std.append(0)
-			
+				
 	
 
 	s1 = pd.Series(I_avg)
@@ -132,16 +137,17 @@ def uncertainty(I):
 	newI['Average I'] = s1.values
 	newI['Is standart deviation'] = s2.values
 	newI['Average I standart deviation'] = s3.values
-
+	
 	I = pd.concat([I, newI], axis=1)
 
 	return I
 
 def print_graph(df):
 	#print qxI graph showing std_dev
-
-	df.plot(x='start', y='Average I', xerr='Average I standart deviation')
-
+	print(df)
+	#df.astype(float)
+	df.plot(x='start', y='Average I', logy=True, yerr='Average I standart deviation', ecolor='r')
+	#p.set_yscale('log')
 	plt.show()
 
 
