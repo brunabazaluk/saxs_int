@@ -32,7 +32,10 @@ def main():
 
 	Idataframe = select_I(mask, qs, polar_coor, delta_q)
 
+
 	Idataframe = uncertainty(Idataframe)
+
+	#create_file(Idataframe)
 
 	print_graph(Idataframe)
 
@@ -151,24 +154,11 @@ def print_graph(df):
 	plt.show()
 
 
-def render_mask(data, mask):
-	'''
-		mask is an array made of 0s and 1s, 1 represents the presence of the mask, 
-		so, this function disconsider the cell in data represented by 1 on the mask
-	'''
-
-	shape = mask.shape
-
-	line = shape[0]
-	col = shape[1]
-
-	for l in range(line):
-		for c in range(col):
-			if mask[l][c] == 0:
-				data[l][c] = str('x')
-				
-
-	return np.array(data)
-
+def create_file(df):
+	file = open('bla.dat', 'w+')
+	file.write('q            I(q)            Is_stddev\n')
+	for i in range(len(df)):
+		file.write(str(df.iloc[i]['start'])+'            '+str(df.iloc[i]['Average I'])+'            '+str(df.iloc[i]['Average I standart deviation'])+'\n')
+	file.close()
 
 main()
